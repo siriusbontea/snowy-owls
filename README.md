@@ -3,6 +3,7 @@
 * Final Project by Sirius T. Bontea for the University of Kentucky, Department of Geography - New Maps Plus program to fulfil the requirements for MAP671: Introduction to New Mapping (Fall 2021) course.
 * Project updated 20 December 2021.
 * Link to [project website](https://siriusbontea.github.io/snowy-owls/).
+* **Update (October 2026):** The interactive map's Mapbox base map was replaced with free [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) tiles in [Leaflet](https://leafletjs.com/) (Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community). No Mapbox access token is needed. Range and GPS layers load from `geojson/web/`, simplified copies of the project GeoJSON. The original Mapbox notes below are kept as the project record.
 
 
 ## Tools, citations, and methodology used in this project:

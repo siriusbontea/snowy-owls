@@ -2,13 +2,17 @@
 <html>
 <head>
   <meta charset='utf-8' />
-  <title>Snowy Owl Map</title> <!--Change this!! -->
-  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-  <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css" rel="stylesheet" />
+  <title>Snowy Owl Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Base map replaced Oct 2026: the original Mapbox GL style was swapped for
+       free, no-key Esri World Imagery tiles in Leaflet. No access token is needed. -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <style>
     body { margin:0; padding:0; }
-    #map { position:absolute; top:0; bottom:0; width:100%; }
+    #map { position:absolute; top:0; bottom:0; width:100%; background:#0b1d2e; }
+    .legend { background:rgba(255,255,255,.9); padding:6px 8px; font:12px/1.4 sans-serif; border-radius:4px; }
+    .legend i { display:inline-block; width:12px; height:12px; margin-right:5px; vertical-align:middle; }
   </style>
   <link rel="icon" type="image/png" href="images/SnowyOwl.png">
 </head>
@@ -17,31 +21,62 @@
 <div id='map'></div>
 
   <script>
-    // Change this to your Access token ----------------------
-    mapboxgl.accessToken = 'pk.eyJ1Ijoic2lyaXVzYm9udGVhIiwiYSI6ImNrd3AzN3BnaDA4eGQycWswYmg2eGd2cjgifQ.7bGCHPM-V8bkUNxlXn9YOg';
-    // ------------------------------------------------
+    var map = L.map('map', { preferCanvas: true }).setView([67, -86], 4);
 
-    var map = new mapboxgl.Map({
-      container: 'map',
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 18,
+      attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+    }).addTo(map);
 
-      // Change this to your style --------------------
-      style: 'mapbox://styles/siriusbontea/ckxa6jwjj1xtp14nvqr9pkxcf',
-      // ----------------------------------------------
+    var seasonColors = {
+      breeding: '#e8412c',
+      nonbreeding: '#4fc3f7',
+      prebreeding_migration: '#7cd321',
+      postbreeding_migration: '#c6e81e'
+    };
 
-      // Change to your location ----------------------
-      zoom: 4.5,
-      center: [-86, 67]
-      // ----------------------------------------------
-
+    fetch('geojson/web/range_simplified.geojson').then(function (r) { return r.json(); }).then(function (data) {
+      L.geoJSON(data, {
+        style: function (f) {
+          var c = seasonColors[f.properties.season] || '#ffffff';
+          return { color: c, weight: 1, fillColor: c, fillOpacity: 0.35 };
+        },
+        onEachFeature: function (f, layer) { layer.bindPopup('Range (eBird): ' + f.properties.season.replace(/_/g, ' ')); }
+      }).addTo(map);
     });
 
-    // Add geolocate control to the map.
-     map.addControl(new mapboxgl.GeolocateControl({
-      positionOptions: {
-        enableHighAccuracy: true
-      },
-      trackUserLocation: true
-    }));
+    fetch('geojson/web/gps_points.geojson').then(function (r) { return r.json(); }).then(function (data) {
+      L.geoJSON(data, {
+        pointToLayer: function (f, latlng) {
+          return L.circleMarker(latlng, { radius: 2, stroke: false, fillColor: '#00e5ff', fillOpacity: 0.85 });
+        }
+      }).addTo(map);
+    });
+
+    var legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = function () {
+      var d = L.DomUtil.create('div', 'legend');
+      d.innerHTML = '<i style="background:#00e5ff"></i>GPS fixes (Movebank)<br>' +
+        Object.keys(seasonColors).map(function (k) {
+          return '<i style="background:' + seasonColors[k] + '"></i>' + k.replace(/_/g, ' ');
+        }).join('<br>');
+      return d;
+    };
+    legend.addTo(map);
+
+    // Geolocation control (replaces the original Mapbox GeolocateControl).
+    var Locate = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function () {
+        var b = L.DomUtil.create('a', 'leaflet-bar');
+        b.href = '#'; b.title = 'Show my location'; b.innerHTML = '&#9678;';
+        b.style.cssText = 'display:block;width:30px;height:30px;line-height:30px;text-align:center;background:#fff;font-size:18px;color:#333;text-decoration:none;';
+        L.DomEvent.on(b, 'click', function (e) { L.DomEvent.preventDefault(e); map.locate({ setView: true, maxZoom: 10, enableHighAccuracy: true }); });
+        return b;
+      }
+    });
+    map.addControl(new Locate());
+    map.on('locationfound', function (e) { L.circle(e.latlng, { radius: e.accuracy }).addTo(map); });
   </script>
 
 </body>
